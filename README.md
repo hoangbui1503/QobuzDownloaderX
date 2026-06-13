@@ -18,6 +18,9 @@ Telegram Group Chat - <a href="https://t.me/QbdLX">@QbdLX</a><br />
 Telegram Updates Channel - <a href="https://t.me/QobuzDownloaderX">@QobuzDownloaderX</a><br />
 I'm never really active on Telegram, but these are the official channels.
 
+# macOS / Linux (cross-platform CLI)
+The original app is Windows-only (WinForms). A cross-platform **.NET 8 command-line** version that runs natively on **macOS**, Linux and Windows lives in <a href="src/QobuzDownloaderX.Cli">`src/QobuzDownloaderX.Cli`</a> — see its <a href="src/QobuzDownloaderX.Cli/README.md">README</a> for build and usage instructions.
+
 # About
 QobuzDownloaderX is a program for downloading music streams from the streaming platform <a href="https://qobuz.com/">Qobuz</a>.
 
