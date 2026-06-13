@@ -3,22 +3,35 @@
 # self-contained .NET CLI (no .NET install required on the target Mac).
 #
 # Usage:
-#   packaging/macos/build-app.sh [arm64|x64|both]   (default: arm64)
+#   packaging/macos/build-app.sh [arm64|x64|both] [sc|fd]
+#     arch: arm64 (default) | x64 | both
+#     mode: sc = self-contained, ~70MB, no .NET needed on target (default)
+#           fd = framework-dependent, <1MB, target must install .NET 8 Runtime
 #
-# Output: packaging/macos/dist/QobuzDownloaderX.app  (+ a .zip next to it)
+# Output: packaging/macos/dist[-fd]/QobuzDownloaderX.app  (+ a .zip next to it)
 set -euo pipefail
 
 ARCH="${1:-arm64}"
+MODE="${2:-sc}"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 PROJ="$REPO_ROOT/src/QobuzDownloaderX.Cli/QobuzDownloaderX.Cli.csproj"
-DIST="$SCRIPT_DIR/dist"
+
+if [ "$MODE" = "fd" ]; then
+    DIST="$SCRIPT_DIR/dist-fd"
+    README="$SCRIPT_DIR/ĐỌC TRƯỚC (ban nhe).txt"
+    SELFCONTAINED="false"
+else
+    DIST="$SCRIPT_DIR/dist"
+    README="$SCRIPT_DIR/ĐỌC TRƯỚC.txt"
+    SELFCONTAINED="true"
+fi
 APP="$DIST/QobuzDownloaderX.app"
 
 publish() { # $1 = rid
-    dotnet publish "$PROJ" -c Release -r "$1" --self-contained \
+    dotnet publish "$PROJ" -c Release -r "$1" --self-contained "$SELFCONTAINED" \
         -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true \
-        -o "$DIST/_publish_$1"
+        -p:DebugType=none -o "$DIST/_publish_$1"
 }
 
 rm -rf "$DIST"
@@ -55,10 +68,12 @@ esac
 chmod +x "$APP/Contents/MacOS/qobuz-dl-x"* 2>/dev/null || true
 rm -rf "$DIST"/_publish_*
 
-cp "$SCRIPT_DIR/ĐỌC TRƯỚC.txt" "$DIST/ĐỌC TRƯỚC.txt" 2>/dev/null || true
+cp "$README" "$DIST/ĐỌC TRƯỚC.txt" 2>/dev/null || true
 
-( cd "$DIST" && zip -r -y -q "QobuzDownloaderX-macos.zip" "QobuzDownloaderX.app" "ĐỌC TRƯỚC.txt" 2>/dev/null || \
-  zip -r -y -q "QobuzDownloaderX-macos.zip" "QobuzDownloaderX.app" )
+ZIP="QobuzDownloaderX-macos$([ "$MODE" = "fd" ] && echo "-nhe").zip"
+( cd "$DIST" && rm -f "$ZIP" && \
+  zip -r -y -q "$ZIP" "QobuzDownloaderX.app" "ĐỌC TRƯỚC.txt" 2>/dev/null || \
+  ( cd "$DIST" && zip -r -y -q "$ZIP" "QobuzDownloaderX.app" ) )
 
 echo "Done -> $DIST/QobuzDownloaderX.app"
-echo "Zip  -> $DIST/QobuzDownloaderX-macos.zip"
+echo "Zip  -> $DIST/$ZIP"

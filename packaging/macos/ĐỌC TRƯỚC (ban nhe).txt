@@ -1,0 +1,46 @@
+QOBUZ DOWNLOADER X — cho macOS (bản nhẹ)
+=========================================
+
+⚠️ BƯỚC 1 — CÀI .NET 8 RUNTIME (chỉ làm 1 lần)
+----------------------------------------------
+Bản nhẹ này cần ".NET Runtime" để chạy. Cài rất nhanh, chỉ bấm đúp:
+
+  1. Mở link này trong trình duyệt:
+     https://dotnet.microsoft.com/en-us/download/dotnet/8.0/runtime
+  2. Ở mục ".NET Runtime 8.0.xx"  ->  cột "macOS"  ->  bấm  "Arm64"
+     (Tải file có tên kiểu  dotnet-runtime-8.0.xx-osx-arm64.pkg)
+  3. Bấm đúp file .pkg vừa tải, bấm Continue/Agree/Install đến hết.
+
+  (Chọn "Run apps - Runtime", KHÔNG cần bản SDK.)
+
+
+BƯỚC 2 — MỞ APP (lần đầu)
+--------------------------
+macOS chặn app chưa ký số. Mở như sau:
+
+  1. Bấm CHUỘT PHẢI (giữ Control + bấm) vào "QobuzDownloaderX.app"
+  2. Chọn "Open" (Mở)  ->  hiện cảnh báo  ->  bấm "Open" lần nữa
+  -> Từ lần sau chỉ cần bấm đúp như bình thường.
+
+Nếu vẫn bị chặn: mở Terminal, dán dòng sau rồi Enter
+(kéo-thả app vào Terminal để tự điền đường dẫn):
+  xattr -dr com.apple.quarantine "/đường/dẫn/QobuzDownloaderX.app"
+
+
+BƯỚC 3 — SỬ DỤNG
+-----------------
+- Bấm đúp app -> cửa sổ Terminal hiện menu tiếng Việt.
+- Lần đầu: nhập Email + Mật khẩu Qobuz (cần TÀI KHOẢN TRẢ PHÍ).
+- Sau đó DÁN LINK album/bài hát/playlist từ Qobuz rồi Enter để tải.
+    c = đổi chất lượng   |   t = đổi thư mục lưu   |   x = thoát
+
+Nhạc lưu mặc định ở:  ~/Music/Qobuz Downloads
+(Finder: Music -> Qobuz Downloads)
+
+
+GHI CHÚ
+-------
+- Nếu mở app mà Terminal báo "You must install .NET" nghĩa là chưa cài đúng
+  Runtime ở Bước 1 (nhớ chọn bản macOS Arm64).
+- App chỉ tải những gì tài khoản Qobuz của bạn cho phép.
+- Có lỗi gì cứ chụp màn hình gửi lại nhé.
