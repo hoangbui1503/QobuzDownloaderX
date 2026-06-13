@@ -10,8 +10,16 @@ BIN="$HERE/qobuz-dl-x"
 # Best-effort: clear the quarantine flag so the inner binary runs without the
 # "cannot be opened" Gatekeeper prompt. (The .app itself may still need a
 # one-time right-click -> Open the first time — see the included README.)
+xattr -dr com.apple.quarantine "$HERE/.." 2>/dev/null
 xattr -dr com.apple.quarantine "$BIN" 2>/dev/null
 chmod +x "$BIN" 2>/dev/null
+
+# Apple Silicon kills unsigned Mach-O binaries with SIGKILL ("zsh: killed").
+# The binary is cross-built on Linux and therefore unsigned, so apply a local
+# ad-hoc signature the first time. codesign ships with macOS.
+if ! codesign -v "$BIN" >/dev/null 2>&1; then
+    codesign --force --sign - "$BIN" >/dev/null 2>&1
+fi
 
 /usr/bin/osascript <<EOF
 tell application "Terminal"
