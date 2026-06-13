@@ -1,0 +1,34 @@
+QOBUZ DOWNLOADER X — cho macOS
+================================
+
+CÁCH CHẠY (lần đầu tiên)
+------------------------
+Vì app chưa được Apple ký số, macOS sẽ chặn khi mở lần đầu. Làm theo CÁCH 1:
+
+CÁCH 1 (khuyên dùng):
+  1. Bấm CHUỘT PHẢI (hoặc giữ Control + bấm) vào "QobuzDownloaderX.app"
+  2. Chọn "Open" (Mở)
+  3. Hiện cảnh báo -> bấm "Open" lần nữa
+  -> Từ lần sau chỉ cần bấm đúp như bình thường.
+
+Nếu vẫn bị chặn (hiện "không thể mở vì Apple..."):
+CÁCH 2 (mở Terminal, dán 1 dòng này rồi Enter — kéo-thả app vào nếu cần):
+  xattr -dr com.apple.quarantine "/đường/dẫn/tới/QobuzDownloaderX.app"
+
+SỬ DỤNG
+--------
+1. Bấm đúp vào app -> một cửa sổ Terminal hiện ra với menu tiếng Việt.
+2. Lần đầu: nhập Email + Mật khẩu Qobuz (hoặc token). Cần TÀI KHOẢN TRẢ PHÍ.
+3. Sau đó: DÁN LINK album/bài hát/playlist từ Qobuz rồi Enter để tải.
+   - Gõ "c" để đổi chất lượng (MP3 / FLAC / Hi-Res / tối đa)
+   - Gõ "t" để đổi thư mục lưu
+   - Gõ "x" để thoát
+
+Mặc định nhạc lưu ở:  ~/Music/Qobuz Downloads
+(Trong Finder: Music -> Qobuz Downloads)
+
+GHI CHÚ
+-------
+- App chỉ tải được những gì tài khoản Qobuz của bạn cho phép.
+- Không kèm theo app_id/secret của Qobuz; chúng được lấy tự động khi chạy.
+- Muốn sửa MD5 cho file FLAC: cài thêm flac  ->  brew install flac

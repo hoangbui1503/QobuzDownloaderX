@@ -14,7 +14,17 @@ public static class CommandLine
     {
         try
         {
-            if (args.Length == 0 || IsHelp(args[0]))
+            // No arguments: launch the friendly interactive menu when attached to
+            // a terminal (e.g. double-clicked .command / .app), otherwise help.
+            if (args.Length == 0)
+            {
+                if (!Console.IsInputRedirected)
+                    return await InteractiveAsync();
+                PrintHelp();
+                return 0;
+            }
+
+            if (IsHelp(args[0]))
             {
                 PrintHelp();
                 return 0;
@@ -28,6 +38,7 @@ public static class CommandLine
             {
                 "login" => await LoginAsync(opts),
                 "get" or "download" or "dl" => await GetAsync(opts),
+                "menu" or "interactive" => await InteractiveAsync(),
                 "config" => Config(opts),
                 "version" or "--version" or "-v" => Version(),
                 _ => Unknown(command),
@@ -46,6 +57,170 @@ public static class CommandLine
             return 1;
         }
     }
+
+    /// <summary>
+    /// Friendly menu-driven mode for non-technical users (double-clickable .app
+    /// / .command). Walks through login, then loops asking for links to download.
+    /// </summary>
+    private static async Task<int> InteractiveAsync()
+    {
+        Console.OutputEncoding = System.Text.Encoding.UTF8;
+        var cfg = AppConfig.Load();
+
+        Console.WriteLine("============================================");
+        Console.WriteLine("  QobuzDownloaderX  —  macOS / Linux");
+        Console.WriteLine("============================================\n");
+
+        using var http = new HttpClient { Timeout = TimeSpan.FromMinutes(15) };
+        var api = new QobuzApiClient(http);
+
+        // --- Ensure logged in ---
+        if (!cfg.HasCredentials)
+        {
+            Console.WriteLine("Bạn cần đăng nhập Qobuz (tài khoản trả phí).\n");
+            if (!await InteractiveLoginAsync(api, cfg))
+            {
+                Console.WriteLine("\nKhông đăng nhập được. Nhấn Enter để thoát.");
+                Console.ReadLine();
+                return 1;
+            }
+        }
+        else
+        {
+            api.UseCredentials(cfg.AppId!, cfg.AppSecret ?? "", cfg.UserAuthToken!, cfg.UserId ?? "", cfg.DisplayName ?? "");
+            if (string.IsNullOrEmpty(cfg.AppSecret))
+            {
+                try
+                {
+                    await api.BootstrapAppCredentialsAsync();
+                    api.UseCredentials(api.AppId, api.AppSecret, cfg.UserAuthToken!, cfg.UserId ?? "", cfg.DisplayName ?? "");
+                    cfg.AppId = api.AppId; cfg.AppSecret = api.AppSecret; cfg.Save();
+                }
+                catch { /* will surface on first download */ }
+            }
+            Console.WriteLine($"Đã đăng nhập: {(string.IsNullOrEmpty(cfg.DisplayName) ? cfg.UserId : cfg.DisplayName)}");
+        }
+
+        var downloader = new Downloader(api, cfg, http);
+
+        // --- Main loop ---
+        while (true)
+        {
+            Console.WriteLine("\n--------------------------------------------");
+            Console.WriteLine($"Chất lượng : {QualityName(cfg.QualityFormatId)}");
+            Console.WriteLine($"Lưu vào    : {cfg.DownloadFolder}");
+            Console.WriteLine("--------------------------------------------");
+            Console.WriteLine("Dán LINK Qobuz để tải, hoặc gõ:");
+            Console.WriteLine("  c = đổi chất lượng   t = đổi thư mục lưu   x = thoát");
+            Console.Write("\n> ");
+
+            string? input = Console.ReadLine()?.Trim();
+            if (string.IsNullOrEmpty(input)) continue;
+
+            if (input.Equals("x", StringComparison.OrdinalIgnoreCase) ||
+                input.Equals("thoat", StringComparison.OrdinalIgnoreCase) ||
+                input.Equals("quit", StringComparison.OrdinalIgnoreCase))
+            {
+                Console.WriteLine("Tạm biệt!");
+                return 0;
+            }
+            if (input.Equals("c", StringComparison.OrdinalIgnoreCase))
+            {
+                ChooseQuality(cfg);
+                continue;
+            }
+            if (input.Equals("t", StringComparison.OrdinalIgnoreCase))
+            {
+                Console.Write("Nhập đường dẫn thư mục lưu: ");
+                string? folder = Console.ReadLine()?.Trim();
+                if (!string.IsNullOrEmpty(folder)) { cfg.DownloadFolder = ExpandHome(folder); cfg.Save(); }
+                continue;
+            }
+
+            var entity = QobuzUrl.Parse(input);
+            if (entity.Type == QobuzEntityType.Unknown)
+            {
+                Console.WriteLine("⚠  Không nhận ra link. Hãy dán link album/track/playlist từ Qobuz.");
+                continue;
+            }
+            try
+            {
+                await downloader.DownloadEntityAsync(entity, CancellationToken.None);
+                Console.WriteLine("\n✅ Xong!");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"\n❌ Lỗi: {ex.Message}");
+            }
+        }
+    }
+
+    private static async Task<bool> InteractiveLoginAsync(QobuzApiClient api, AppConfig cfg)
+    {
+        try
+        {
+            Console.WriteLine("Đang lấy thông tin ứng dụng từ Qobuz...");
+            await api.BootstrapAppCredentialsAsync();
+
+            Console.WriteLine("\nĐăng nhập bằng:  1) Email + mật khẩu   2) Token");
+            Console.Write("Chọn (1/2, mặc định 1): ");
+            string? choice = Console.ReadLine()?.Trim();
+
+            if (choice == "2")
+            {
+                Console.Write("Dán token: ");
+                string? token = Console.ReadLine()?.Trim();
+                if (string.IsNullOrEmpty(token)) return false;
+                await api.LoginWithTokenAsync(token);
+            }
+            else
+            {
+                string? email = Prompt("Email: ");
+                string password = PromptHidden("Mật khẩu: ");
+                if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password)) return false;
+                await api.LoginWithEmailAsync(email, password);
+            }
+
+            cfg.AppId = api.AppId;
+            cfg.AppSecret = api.AppSecret;
+            cfg.UserAuthToken = api.UserAuthToken;
+            cfg.UserId = api.UserId;
+            cfg.DisplayName = api.DisplayName;
+            cfg.Save();
+            Console.WriteLine($"\n✅ Đăng nhập thành công: {(string.IsNullOrEmpty(api.DisplayName) ? api.UserId : api.DisplayName)}");
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ {ex.Message}");
+            return false;
+        }
+    }
+
+    private static void ChooseQuality(AppConfig cfg)
+    {
+        Console.WriteLine("\nChọn chất lượng:");
+        Console.WriteLine("  1) MP3 320");
+        Console.WriteLine("  2) FLAC CD (16-bit/44.1kHz)");
+        Console.WriteLine("  3) FLAC Hi-Res (24-bit tối đa 96kHz)");
+        Console.WriteLine("  4) FLAC tối đa (24-bit tối đa 192kHz)");
+        Console.Write("Chọn (1-4): ");
+        switch (Console.ReadLine()?.Trim())
+        {
+            case "1": cfg.QualityFormatId = "5"; break;
+            case "2": cfg.QualityFormatId = "6"; break;
+            case "3": cfg.QualityFormatId = "7"; break;
+            case "4": cfg.QualityFormatId = "27"; break;
+            default: Console.WriteLine("Giữ nguyên."); return;
+        }
+        cfg.Save();
+        Console.WriteLine($"Đã đặt: {QualityName(cfg.QualityFormatId)}");
+    }
+
+    private static string ExpandHome(string path) =>
+        path.StartsWith("~", StringComparison.Ordinal)
+            ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), path.TrimStart('~', '/', '\\'))
+            : path;
 
     private static async Task<int> LoginAsync(ArgMap opts)
     {

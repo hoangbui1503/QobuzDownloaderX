@@ -244,3 +244,6 @@ ModelManifest.xml
 
 # FAKE - F# Make
 .fake/
+
+# macOS packaging build output
+packaging/macos/dist/
